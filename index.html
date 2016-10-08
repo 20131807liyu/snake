@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>贪吃蛇</title>
+	<style>
+		*{margin:0;padding:0;}
+		#box{width:600px;
+			 height:500px;
+			 border:1px solid #f00;
+			 position:absolute;
+			 top:0;
+			 left:0;
+			 bottom:0;
+			 right:0;
+			 margin:auto;
+			 font-size:0;}
+		.map{width:20px;
+			 height:20px;
+			 display:inline-block;
+			 border:1px solid #ccc;
+			 box-sizing:border-box;}
+		.food,.snake{width:20px;
+			  		 height:20px;
+			  		 position:absolute;}
+		.food{background:#f00;}
+		.snake{background:#000;
+			   top:0;
+			   left:0;}
+		#count{width:200px;
+			   height:150px;
+			   border:2px solid red;
+			   position:absolute;
+			   left:600px;
+			   top:-1px;
+			   z-index:10;
+			   font-size:20px;}
+		#count ul{list-style:none;}
+	</style>
+	<script>
+		var DIR={
+			DIR_LEFT:1,
+			DIR_TOP:2,
+			DIR_RIGHT:3,
+			DIR_BOTTOM:4
+		};
+		var square={width:20,height:20};
+		
+		var Map={
+			show:function(){
+				var box=document.getElementById("box");
+				var width=box.offsetWidth-2;
+				var height=box.offsetHeight-2;
+				var hMax=width/square.width;
+				var vMax=height/square.height;
+				for(var i=0;i<hMax*vMax;i++){
+					var newSpan=document.createElement("span");
+					newSpan.className="map";
+					box.appendChild(newSpan);
+				}
+			}
+		}
+		
+		var Snake={
+			handler:null,
+			speed:1000,
+			dirc:DIR.DIR_RIGHT,
+			bodys:[],
+			isValidPosition:function(left,top){
+				for(var i=0;i<this.bodys.length;i++){
+					if(this.bodys[i].offsetTop==top && this.bodys[i].offsetLeft==left){
+						return false;
+					}
+				}
+				return true;
+			},
+			addBody:function(left,top){
+				var newBody=document.createElement("span");
+				newBody.className="snake";
+				newBody.style.top=top+"px";
+				newBody.style.left=left+"px";
+				document.getElementById("box").appendChild(newBody);
+				this.bodys.push(newBody);
+				Install.count();
+			},
+			moveOrNot:function(left,top){
+				if(!this.isValidPosition(left,top)){
+					return false;
+				}
+				var box=document.getElementById("box");
+				if(left<0 || top<0 || left>box.offsetWidth-square.width || top>box.offsetHeight-square.height){
+					return false;
+				}
+				return true;
+			},
+			// 初始化蛇
+			init:function(length){
+				var box=document.getElementById("box");
+				for(var i=0;i<length;i++){
+					var newSpan=document.createElement("span");
+					newSpan.className="snake";
+					newSpan.style.left=i*square.width+"px";
+					box.appendChild(newSpan);
+					this.bodys.unshift(newSpan);
+				}
+				this.bodys[0].style.backgroundColor="#f00";
+				// 绑定方向控制
+				document.onkeydown=function(e){
+					switch(e.keyCode){
+						case 37:
+							Snake.dirc=DIR.DIR_LEFT;
+							break;
+						case 38:
+							Snake.dirc=DIR.DIR_TOP;
+							break;
+						case 39:
+							Snake.dirc=DIR.DIR_RIGHT;
+							break;
+						case 40:
+							Snake.dirc=DIR.DIR_BOTTOM;
+							break;
+						default:break;
+					}
+				}
+			},
+			// 移动蛇
+			move:function(){
+				var rearLeft=this.bodys[this.bodys.length-1].offsetLeft;
+				var rearTop=this.bodys[this.bodys.length-1].offsetTop;
+				// 让蛇头以外的元素移动
+				for(var i=this.bodys.length-1;i>=1;i--){
+					this.bodys[i].style.top=this.bodys[i-1].offsetTop+"px";
+					this.bodys[i].style.left=this.bodys[i-1].offsetLeft+"px";
+				}
+				var newLeft=this.bodys[0].offsetLeft;
+				var newTop=this.bodys[0].offsetTop;
+				// 让蛇头移动
+				switch(this.dirc){
+					case DIR.DIR_LEFT:
+						newLeft-=square.width;
+						break;
+					case DIR.DIR_TOP:
+						newTop-=square.height;
+						break;
+					case DIR.DIR_RIGHT:
+						newLeft+=square.width;
+						break;
+					case DIR.DIR_BOTTOM:
+						newTop+=square.height;
+						break;
+					default:break;
+				}
+				if(!this.moveOrNot(newLeft,newTop)){
+					clearInterval(this.handler);
+					alert("Game Over!\n您的得分："+Install.score);
+					return;
+				}
+				this.bodys[0].style.left=newLeft+"px";
+				this.bodys[0].style.top=newTop+"px";
+				if(newTop==Food.food.offsetTop && newLeft==Food.food.offsetLeft){
+					this.addBody(rearLeft,rearTop);
+					Food.reset();
+					clearInterval(this.handler);
+					this.speed=this.speed-100>100?this.speed-100:100;
+					this.handler=setInterval(function(){Snake.move();},this.speed);
+				}
+			}
+		};
+
+		var Food={
+			food:null,
+			reset:function(){
+				document.getElementById("box").removeChild(this.food);
+				this.food=null;
+				this.show();
+			},
+			show:function(){
+				var box=document.getElementById("box");
+				var width=box.offsetWidth-2;
+				var height=box.offsetHeight-2;
+				var hMax=width/square.width;
+				var vMax=height/square.height;
+				this.food=document.createElement("span");
+				this.food.className="food";
+				do{
+					var top=Math.floor(Math.random()*vMax)*square.height;
+					var left=Math.floor(Math.random()*hMax)*square.width;
+				}while(!Snake.isValidPosition(left,top))
+				this.food.style.top=top+"px";
+				this.food.style.left=left+"px";
+				box.appendChild(this.food);
+			}
+		}
+
+		var Install={
+			// 控制暂停和开始
+			score:0,
+			control:function(){
+				var submit=document.getElementById("count").getElementsByTagName("li")[0];
+				submit.onclick=function(){
+					if(submit.getElementsByTagName("span")[0].innerHTML=="暂停:"){
+						clearInterval(Snake.handler);
+						submit.getElementsByTagName("span")[0].innerHTML="继续:";
+						submit.getElementsByTagName("input")[0].setAttribute("value","继续");
+					}else{
+						Snake.handler=setInterval(function(){Snake.move();},Snake.speed);
+						submit.getElementsByTagName("span")[0].innerHTML="暂停:";
+						submit.getElementsByTagName("input")[0].setAttribute("value","暂停");
+					}
+				};
+			},
+			count:function(){
+				var submit=document.getElementById("count").getElementsByTagName("li")[1];
+					this.score+=1;
+					submit.getElementsByTagName("span")[0].innerHTML=this.score;
+			}
+		}
+
+		window.onload=function(){
+			Map.show();
+			Snake.init(5);
+			Snake.handler=setInterval(function(){Snake.move();},Snake.speed);
+			Food.show();
+			Install.control();
+		};
+	</script>
+</head>
+<body>
+	<div id="box">
+		<div id="count">
+			<ul>
+				<li><span>暂停:</span><input type="submit" value="暂停"></li>
+				<li>得分:<span>0</span></li>
+			</ul>
+		</div>
+	</div>
+</body>
+</html>
